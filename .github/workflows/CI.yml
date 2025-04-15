@@ -20,8 +20,8 @@ jobs:
         key: "VulkanSDK-{{ VK_VERSION }}-Installer"
     - name: vulkansdk
       if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
+      shell: pwsh
       run: |
-        shell: pwsh
         Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/$env:VK_VERSION/windows/VulkanSDK-$env:VK_VERSION-Installer.exe?Human=true -OutFile VulkanSDK-$env:VK_VERSION-Installer.exe
         .\VulkanSDK-$env:VK_VERSION-Installer.exe --root ${PWD}\VulkanSDK --accept-licenses --default-answer --confirm-command install
     - name: build
