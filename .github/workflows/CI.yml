@@ -22,8 +22,8 @@ jobs:
       if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
-        Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/$env:VK_VERSION/windows/VulkanSDK-$env:VK_VERSION-Installer.exe?Human=true -OutFile VulkanSDK-$env:VK_VERSION-Installer.exe
-        .\VulkanSDK-$env:VK_VERSION-Installer.exe --root ${PWD}\VulkanSDK --accept-licenses --default-answer --confirm-command install
+        Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/$env:VK_VERSION/windows/VulkanSDK-$env:VK_VERSION-Installer.exe?Human=true -OutFile VulkanSDK-Installer.exe
+        .\VulkanSDK-Installer.exe --root ${PWD}\VulkanSDK --accept-licenses --default-answer --confirm-command install
     - name: build
       run: |
         $env:VULKAN_SDK="$(pwd)/VulkanSDK"
@@ -47,8 +47,8 @@ jobs:
       if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
-        Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/$env:VK_VERSION/windows/VulkanSDK-$env:VK_VERSION-Installer.exe?Human=true -OutFile VulkanSDK-$env:VK_VERSION-Installer.exe
-        .\VulkanSDK-$env:VK_VERSION-Installer.exe --root ${PWD}\VulkanSDK --accept-licenses --default-answer --confirm-command install
+        Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/$env:VK_VERSION/windows/VulkanSDK-$env:VK_VERSION-Installer.exe?Human=true -OutFile VulkanSDK-Installer.exe
+        .\VulkanSDK-Installer.exe --root ${PWD}\VulkanSDK --accept-licenses --default-answer --confirm-command install
     - name: build
       run: |
         $env:VULKAN_SDK="$(pwd)/VulkanSDK"
