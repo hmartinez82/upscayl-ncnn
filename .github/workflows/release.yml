@@ -178,12 +178,69 @@ jobs:
       - name: package
         # Copy-Item -Verbose -Recurse -Path "models\*" -Destination "${{ env.PACKAGENAME }}"
         run: |
+          & "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\Launch-VsDevShell.ps1"
+
           mkdir ${{ env.PACKAGENAME }}
           Copy-Item -Verbose -Path "README.md" -Destination "${{ env.PACKAGENAME }}"
           Copy-Item -Verbose -Path "LICENSE" -Destination "${{ env.PACKAGENAME }}"
           Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination "${{ env.PACKAGENAME }}"
-          Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination "${{ env.PACKAGENAME }}"
-          Copy-Item -Verbose -Path "C:\windows\system32\vcomp140d.dll" -Destination "${{ env.PACKAGENAME }}"
+          $vcomp = Get-ChildItem $Env:VCToolsRedistDir\x64 -Recurse -Name vcomp*.dll
+          $vcompd = Get-ChildItem $Env:VCToolsRedistDir\debug_nonredist\x64 -Recurse -Name vcomp*.dll
+          Copy-Item -Verbose -Path "$Env:VCToolsRedistDir\x64\$vcomp" -Destination "${{ env.PACKAGENAME }}"
+          Copy-Item -Verbose -Path "$Env:VCToolsRedistDir\debug_nonredist\x64\$vcompd" -Destination "${{ env.PACKAGENAME }}"
+
+          7z a -r ${{ env.PACKAGENAME }}.zip ${{ env.PACKAGENAME }}
+      - name: upload
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.PACKAGENAME }}
+          path: ${{ env.PACKAGENAME }}.zip
+
+  windows-arm64:
+    needs: [setup]
+    runs-on: windows-11-arm
+    env:
+      PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-windows-arm64
+      VK_VERSION: 1.4.309.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - name: cache-vulkansdk
+        id: cache-vulkansdk
+        uses: actions/cache@v4
+        with:
+          path: "VulkanSDK"
+          key: VulkanSDK-{{ VK_VERSION }}-Installer-arm64
+      - name: vulkansdk
+        if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
+        run: |
+          Invoke-WebRequest -Uri "https://sdk.lunarg.com/sdk/download/$env:VK_VERSION/windows/VulkanSDK-$env:VK_VERSION-Installer.exe?Human=true" -OutFile VulkanSDK-Installer.exe
+          .\VulkanSDK-Installer.exe --root ${pwd}\VulkanSDK --accept-licenses --default-answer --confirm-command install
+      - name: build
+        run: |
+          $env:VULKAN_SDK="$(pwd)/VulkanSDK"
+
+          # Patch NCNN to support configuring for ARM64 on Windows
+          (Get-Content src\ncnn\CMakeLists.txt) -replace '    OR \(CMAKE_SYSTEM_PROCESSOR MATCHES "\^\(arm\|aarch64\)"\)', '    OR (CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm|aarch64|arm64|ARM64)")' | Set-Content src\ncnn\CMakeLists.txt
+          (Get-Content src\ncnn\CMakeLists.txt) -replace '\(\$\{CMAKE_GENERATOR_PLATFORM\} MATCHES "\^\(arm\|arm64\)"\)', '(${CMAKE_GENERATOR_PLATFORM} MATCHES "^(arm|arm64|ARM64)")' | Set-Content src\ncnn\CMakeLists.txt
+
+          mkdir build; cd build
+          cmake -A ARM64 -DVulkan_LIBRARY="$env:VULKAN_SDK\Lib\vulkan-1.lib" ../src
+          cmake --build . --config Release -j 2
+      - name: package
+        run: |
+          & "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\Launch-VsDevShell.ps1"
+
+          mkdir ${{ env.PACKAGENAME }}
+          Copy-Item -Verbose -Path "README.md" -Destination "${{ env.PACKAGENAME }}"
+          Copy-Item -Verbose -Path "LICENSE" -Destination "${{ env.PACKAGENAME }}"
+          Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination "${{ env.PACKAGENAME }}"
+          $vcomp = Get-ChildItem $Env:VCToolsRedistDir\arm64 -Recurse -Name vcomp*.dll
+          $vcompd = Get-ChildItem $Env:VCToolsRedistDir\debug_nonredist\arm64 -Recurse -Name vcomp*.dll
+          Copy-Item -Verbose -Path "$Env:VCToolsRedistDir\arm64\$vcomp" -Destination "${{ env.PACKAGENAME }}"
+          Copy-Item -Verbose -Path "$Env:VCToolsRedistDir\debug_nonredist\arm64\$vcompd" -Destination "${{ env.PACKAGENAME }}"
+
           7z a -r ${{ env.PACKAGENAME }}.zip ${{ env.PACKAGENAME }}
       - name: upload
         uses: actions/upload-artifact@v2
@@ -192,7 +249,7 @@ jobs:
           path: ${{ env.PACKAGENAME }}.zip
 
   release:
-    needs: [setup, ubuntu, macos, windows]
+    needs: [setup, ubuntu, macos, windows, windows-arm64]
     # needs: [setup, macos]
     runs-on: ubuntu-latest
     steps:
@@ -248,3 +305,14 @@ jobs:
           asset_path: artifacts/${{ env.PACKAGENAME }}/${{ env.PACKAGENAME }}.zip
           asset_name: ${{ env.PACKAGENAME }}.zip
           asset_content_type: application/zip
+
+      - name: upload-windows-arm64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-windows-arm64
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/${{ env.PACKAGENAME }}/${{ env.PACKAGENAME }}.zip
+          asset_name: ${{ env.PACKAGENAME }}.zip
+          asset_content_type: application/zip  
