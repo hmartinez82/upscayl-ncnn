@@ -50,7 +50,7 @@ jobs:
       run: |
         Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/$env:VK_VERSION_WIN_ARM64/windows/VulkanSDK-$env:VK_VERSION_WIN_ARM64-Installer.exe?Human=true -OutFile VulkanSDK-Installer.exe
         .\VulkanSDK-Installer.exe --root ${pwd}\VulkanSDK --accept-licenses --default-answer --confirm-command install
-    - name: build
+    - name: configure
       shell: pwsh
       run: |
         $env:VULKAN_SDK="$(pwd)/VulkanSDK"
@@ -61,6 +61,15 @@ jobs:
 
         mkdir build; cd build
         cmake -A ARM64 -DVulkan_LIBRARY="$env:VULKAN_SDK\Lib\vulkan-1.lib" ../src
+
+        [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
+        Get-Content upscayl-bin.vcxproj
+        $PSVersionTable
+
+    - name: build
+      shell: cmd
+      run: |
+        cd build
         cmake --build . --config Release -j 2
 
   ubuntu:
