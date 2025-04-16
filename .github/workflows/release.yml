@@ -2,6 +2,7 @@ name: release
 on:
   workflow_dispatch:
 
+
 env:
   DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
   APPLICATION_NAME: upscayl-bin
