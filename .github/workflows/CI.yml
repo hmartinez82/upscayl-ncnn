@@ -52,7 +52,7 @@ jobs:
       run: |
         $env:VULKAN_SDK="$(pwd)/VulkanSDK"
         mkdir build; cd build
-        cmake -A ARM64 ../src
+        cmake -A ARM64 -DNCNN_COMPILER_SUPPORT_ARM82_FP16=OFF ../src
         cmake --build . --config Release -j 2
 
   ubuntu:
